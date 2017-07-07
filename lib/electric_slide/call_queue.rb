@@ -8,21 +8,21 @@ class ElectricSlide
     include Celluloid
 
     ENDED_CALL_EXCEPTIONS = [
-      Adhearsion::Call::Hangup,
-      Adhearsion::Call::ExpiredError,
-      Adhearsion::Call::CommandTimeout,
-      Celluloid::DeadActorError,
-      Punchblock::ProtocolError
+        Adhearsion::Call::Hangup,
+        Adhearsion::Call::ExpiredError,
+        Adhearsion::Call::CommandTimeout,
+        Celluloid::DeadActorError,
+        Punchblock::ProtocolError
     ]
 
     CONNECTION_TYPES = [
-      :call,
-      :bridge,
+        :call,
+        :bridge,
     ].freeze
 
     AGENT_RETURN_METHODS = [
-      :auto,
-      :manual,
+        :auto,
+        :manual,
     ].freeze
 
     Error = Class.new(StandardError)
@@ -77,9 +77,9 @@ class ElectricSlide
       @queue = []       # Calls waiting for an agent
 
       update(
-        agent_strategy: opts[:agent_strategy] || AgentStrategy::LongestIdle,
-        connection_type: opts[:connection_type] || :call,
-        agent_return_method: opts[:agent_return_method] || :auto
+          agent_strategy: opts[:agent_strategy] || AgentStrategy::LongestIdle,
+          connection_type: opts[:connection_type] || :call,
+          agent_return_method: opts[:agent_return_method] || :auto
       )
     end
 
@@ -208,13 +208,13 @@ class ElectricSlide
       agent.address = address if address
 
       case agent.presence
-      when :available
-        bridged_agent_health_check agent
+        when :available
+          bridged_agent_health_check agent
 
-        @strategy << agent
-        check_for_connections
-      when :unavailable
-        @strategy.delete agent
+          @strategy << agent
+          check_for_connections
+        when :unavailable
+          @strategy.delete agent
       end
       agent
     end
@@ -241,6 +241,8 @@ class ElectricSlide
     # Checks to see if any callers are waiting for an agent and attempts to connect them to
     # an available agent
     def check_for_connections
+      # Ensure there are no nil objects in the call queue before trying to connect
+      @queue.compact!
       connect checkout_agent, get_next_caller while call_waiting? && agent_available?
     end
 
@@ -290,6 +292,8 @@ class ElectricSlide
     def connect(agent, queued_call)
       unless queued_call && queued_call.active?
         logger.warn "Inactive queued call found in #connect"
+        agent.callback :connection_failed, current_actor, agent.call, queued_call
+
         return_agent agent
         return
       end
@@ -298,10 +302,10 @@ class ElectricSlide
 
       logger.info "Connecting #{agent} with #{remote_party queued_call}"
       case @connection_type
-      when :call
-        call_agent agent, queued_call
-      when :bridge
-        bridge_agent agent, queued_call
+        when :call
+          call_agent agent, queued_call
+        when :bridge
+          bridge_agent agent, queued_call
       end
     rescue *ENDED_CALL_EXCEPTIONS
       ignoring_ended_calls do
@@ -350,7 +354,7 @@ class ElectricSlide
       @queue.length
     end
 
-  private
+    private
 
     # Get the caller ID of the remote party.
     # If this is an OutboundCall, use Call#to
@@ -388,8 +392,8 @@ class ElectricSlide
       queued_call.on_end { ignoring_ended_calls { agent_call.hangup } }
 
       agent_call.on_unjoined do
-       ignoring_ended_calls { agent_call.hangup }
-       ignoring_ended_calls { queued_call.hangup }
+        ignoring_ended_calls { agent_call.hangup }
+        ignoring_ended_calls { queued_call.hangup }
       end
 
       # Track whether the agent actually talks to the queued_call
@@ -473,12 +477,12 @@ class ElectricSlide
 
     def accept_agent!(agent)
       case @connection_type
-      when :call
-        unless agent.callable?
-          abort ArgumentError.new('Agent has no callable address')
-        end
-      when :bridge
-        bridged_agent_health_check agent
+        when :call
+          unless agent.callable?
+            abort ArgumentError.new('Agent has no callable address')
+          end
+        when :bridge
+          bridged_agent_health_check agent
       end
     end
 
